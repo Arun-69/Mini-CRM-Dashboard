@@ -1,200 +1,365 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
-  Layout as AntLayout,
-  Menu,
-  Avatar,
-  Dropdown,
-  Space,
-  Badge,
-  Button,
+  Box,
+  Drawer,
+  AppBar,
+  Toolbar,
+  List,
   Typography,
-  theme,
-} from 'antd';
+  Divider,
+  IconButton,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  Avatar,
+  Menu,
+  MenuItem,
+  Chip,
+  useMediaQuery,
+  useTheme,
+  Badge,
+  Tooltip,
+  Popover,
+  List as MuiList,
+  ListItemAvatar,
+  ListItemText as MuiListItemText,
+  Button,
+} from '@mui/material';
 import {
-  DashboardOutlined,
-  TeamOutlined,
-  BuildOutlined,
-  CheckCircleOutlined,
-  LogoutOutlined,
-  UserOutlined,
-  BellOutlined,
-  MenuFoldOutlined,
-  MenuUnfoldOutlined,
-} from '@ant-design/icons';
+  Menu as MenuIcon,
+  Dashboard as DashboardIcon,
+  People as PeopleIcon,
+  Business as BusinessIcon,
+  Assignment as AssignmentIcon,
+  Logout as LogoutIcon,
+  Person as PersonIcon,
+  Close as CloseIcon,
+  Circle as CircleIcon,
+} from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 
-const { Header, Sider, Content } = AntLayout;
-const { Text } = Typography;
+const drawerWidth = 260;
 
 const Layout = () => {
-  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [anchorEl, setAnchorEl] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { user, logout } = useAuth();
-  const {
-    token: { colorBgContainer },
-  } = theme.useToken();
 
-  const menuItems = [
-    {
-      key: '/dashboard',
-      icon: <DashboardOutlined />,
-      label: 'Dashboard',
-    },
-    {
-      key: '/leads',
-      icon: <TeamOutlined />,
-      label: 'Leads',
-    },
-    {
-      key: '/companies',
-      icon: <BuildOutlined />,
-      label: 'Companies',
-    },
-    {
-      key: '/tasks',
-      icon: <CheckCircleOutlined />,
-      label: 'Tasks',
-    },
-  ];
 
-  const userMenuItems = [
-    {
-      key: 'profile',
-      icon: <UserOutlined />,
-      label: 'Profile',
-    },
-    {
-      key: 'logout',
-      icon: <LogoutOutlined />,
-      label: 'Logout',
-      onClick: logout,
-    },
-  ];
-
-  const handleMenuClick = ({ key }) => {
-    navigate(key);
+  const handleDrawerToggle = () => {
+    setMobileOpen(!mobileOpen);
   };
 
-  return (
-    <AntLayout style={{ minHeight: '100vh' }}>
-      <Sider
-        trigger={null}
-        collapsible
-        collapsed={collapsed}
-        style={{
-          background: '#001529',
-          position: 'fixed',
-          left: 0,
-          top: 0,
-          bottom: 0,
-          zIndex: 1000,
+  const handleMenuOpen = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleLogout = () => {
+    handleMenuClose();
+    logout();
+    navigate('/login');
+  };
+
+  const handleProfile = () => {
+    handleMenuClose();
+    navigate('/profile');
+  };
+
+  const menuItems = [
+    { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
+    { text: 'Leads', icon: <PeopleIcon />, path: '/leads' },
+    { text: 'Companies', icon: <BusinessIcon />, path: '/companies' },
+    { text: 'Tasks', icon: <AssignmentIcon />, path: '/tasks' },
+  ];
+
+  const drawer = (
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <Box
+        sx={{
+          p: 2,
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1.5,
         }}
-        width={240}
       >
-        <div style={{
-          height: 64,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '0 16px',
-          background: 'rgba(255,255,255,0.05)',
-        }}>
-          <Text style={{ color: 'white', fontSize: 18, fontWeight: 600 }}>
-            {collapsed ? 'CRM' : 'Mini CRM'}
-          </Text>
-        </div>
+        <Box
+          sx={{
+            width: 40,
+            height: 40,
+            borderRadius: '50%',
+            bgcolor: 'white',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Typography variant="h6" sx={{ color: 'primary.main', fontWeight: 700 }}>
+            C
+          </Typography>
+        </Box>
+        <Typography variant="h6" sx={{ color: 'white', fontWeight: 600 }}>
+          Mini CRM
+        </Typography>
+      </Box>
 
-        <Menu
-          theme="dark"
-          mode="inline"
-          selectedKeys={[location.pathname]}
-          items={menuItems}
-          onClick={handleMenuClick}
-          style={{ borderRight: 'none', padding: '8px 0' }}
-        />
-
-        {!collapsed && (
-          <div style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            padding: '16px',
-            borderTop: '1px solid rgba(255,255,255,0.1)',
-          }}>
-            <Space>
-              <Avatar style={{ backgroundColor: '#1890ff' }}>
-                {user?.name?.charAt(0).toUpperCase()}
-              </Avatar>
-              <div>
-                <Text style={{ color: 'white', display: 'block', fontSize: 13 }}>
-                  {user?.name}
-                </Text>
-                <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11 }}>
-                  {user?.role || 'User'}
-                </Text>
-              </div>
-            </Space>
-          </div>
-        )}
-      </Sider>
-
-      <AntLayout style={{ marginLeft: collapsed ? 80 : 240, transition: 'all 0.2s' }}>
-        <Header style={{
-          padding: '0 24px',
-          background: colorBgContainer,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          position: 'sticky',
-          top: 0,
-          zIndex: 999,
-          width: '100%',
-          borderBottom: '1px solid #f0f0f0',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <Button
-              type="text"
-              icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-              onClick={() => setCollapsed(!collapsed)}
-              style={{ fontSize: '16px', width: 40, height: 40 }}
+      <Box sx={{ p: 2, bgcolor: '#F8FAFC' }}>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2,
+            p: 1.5,
+            borderRadius: 2,
+            bgcolor: 'white',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+          }}
+        >
+          <Avatar
+            sx={{
+              width: 40,
+              height: 40,
+              bgcolor: 'primary.main',
+              cursor: 'pointer',
+            }}
+            onClick={() => {
+              navigate('/profile');
+            }}
+          >
+            {user?.name?.charAt(0).toUpperCase()}
+          </Avatar>
+          <Box>
+            <Typography variant="body2" fontWeight={600}>
+              {user?.name}
+            </Typography>
+            <Chip
+              label={user?.role || 'User'}
+              size="small"
+              sx={{
+                height: 20,
+                fontSize: '0.6rem',
+                bgcolor: 'primary.light',
+                color: 'white',
+              }}
             />
-            <Text strong style={{ fontSize: 18 }}>
-              {menuItems.find(item => item.key === location.pathname)?.label || 'Dashboard'}
-            </Text>
-          </div>
+          </Box>
+        </Box>
+      </Box>
 
-          <Space size="middle">
-            <Badge count={0} dot>
-              <Button type="text" icon={<BellOutlined />} size="large" />
-            </Badge>
-            
-            <Dropdown
-              menu={{ items: userMenuItems }}
-              placement="bottomRight"
-              arrow
+      <Divider />
+
+      <List sx={{ flex: 1, px: 1, py: 1 }}>
+        {menuItems.map((item) => {
+          const isActive = location.pathname === item.path || 
+            location.pathname.startsWith(item.path + '/');
+          
+          return (
+            <ListItem
+              button
+              key={item.text}
+              onClick={() => {
+                navigate(item.path);
+                if (isMobile) setMobileOpen(false);
+              }}
+              sx={{
+                borderRadius: 2,
+                mb: 0.5,
+                bgcolor: isActive ? 'primary.light' : 'transparent',
+                color: isActive ? 'white' : 'text.primary',
+                '&:hover': {
+                  bgcolor: isActive ? 'primary.main' : 'rgba(37, 99, 235, 0.08)',
+                },
+                '& .MuiListItemIcon-root': {
+                  color: isActive ? 'white' : 'text.secondary',
+                  minWidth: 40,
+                },
+              }}
             >
-              <Space style={{ cursor: 'pointer' }}>
-                <Avatar style={{ backgroundColor: '#1890ff' }}>
+              <ListItemIcon>{item.icon}</ListItemIcon>
+              <ListItemText
+                primary={item.text}
+                primaryTypographyProps={{
+                  fontWeight: isActive ? 600 : 400,
+                }}
+              />
+              {isActive && (
+                <Box
+                  sx={{
+                    width: 4,
+                    height: 28,
+                    bgcolor: 'white',
+                    borderRadius: 2,
+                  }}
+                />
+              )}
+            </ListItem>
+          );
+        })}
+      </List>
+
+      <Divider />
+
+      <List sx={{ px: 1, pb: 2 }}>
+        <ListItem
+          button
+          onClick={handleLogout}
+          sx={{
+            borderRadius: 2,
+            color: 'error.main',
+            '&:hover': {
+              bgcolor: 'rgba(239, 68, 68, 0.08)',
+            },
+            '& .MuiListItemIcon-root': {
+              color: 'error.main',
+              minWidth: 40,
+            },
+          }}
+        >
+          <ListItemIcon>
+            <LogoutIcon />
+          </ListItemIcon>
+          <ListItemText primary="Logout" />
+        </ListItem>
+      </List>
+    </Box>
+  );
+
+  return (
+    <Box sx={{ display: 'flex' }}>
+      <AppBar
+        position="fixed"
+        sx={{
+          width: { sm: `calc(100% - ${drawerWidth}px)` },
+          ml: { sm: `${drawerWidth}px` },
+          bgcolor: 'white',
+          color: 'text.primary',
+          borderBottom: '1px solid #E2E8F0',
+        }}
+      >
+        <Toolbar>
+          <IconButton
+            color="inherit"
+            aria-label="open drawer"
+            edge="start"
+            onClick={handleDrawerToggle}
+            sx={{ mr: 2, display: { sm: 'none' } }}
+          >
+            <MenuIcon />
+          </IconButton>
+
+          <Typography
+            variant="h6"
+            noWrap
+            component="div"
+            sx={{ flexGrow: 1, fontWeight: 600 }}
+          >
+            {menuItems.find(item => item.path === location.pathname)?.text || 'Dashboard'}
+          </Typography>
+
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+
+            <Tooltip title="Profile">
+              <IconButton onClick={handleMenuOpen} color="inherit">
+                <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
                   {user?.name?.charAt(0).toUpperCase()}
                 </Avatar>
-                <Text>{user?.name}</Text>
-              </Space>
-            </Dropdown>
-          </Space>
-        </Header>
+              </IconButton>
+            </Tooltip>
 
-        <Content style={{
-          padding: '24px',
-          minHeight: 'calc(100vh - 64px)',
-          background: '#f0f2f5',
-        }}>
-          <Outlet />
-        </Content>
-      </AntLayout>
-    </AntLayout>
+            {/* Profile Menu */}
+            <Menu
+              anchorEl={anchorEl}
+              open={Boolean(anchorEl)}
+              onClose={handleMenuClose}
+              PaperProps={{
+                sx: { width: 220, mt: 1 },
+              }}
+            >
+              <Box sx={{ px: 2, py: 1, borderBottom: '1px solid #f0f0f0' }}>
+                <Typography variant="subtitle1" fontWeight={600}>
+                  {user?.name}
+                </Typography>
+                <Typography variant="caption" color="textSecondary">
+                  {user?.email}
+                </Typography>
+              </Box>
+              <MenuItem onClick={handleProfile}>
+                <ListItemIcon>
+                  <PersonIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>Profile</ListItemText>
+              </MenuItem>
+              <Divider />
+              <MenuItem onClick={handleLogout} sx={{ color: 'error.main' }}>
+                <ListItemIcon>
+                  <LogoutIcon fontSize="small" color="error" />
+                </ListItemIcon>
+                <ListItemText>Logout</ListItemText>
+              </MenuItem>
+            </Menu>
+          </Box>
+        </Toolbar>
+      </AppBar>
+
+      <Box
+        component="nav"
+        sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
+      >
+        <Drawer
+          variant="temporary"
+          open={mobileOpen}
+          onClose={handleDrawerToggle}
+          ModalProps={{
+            keepMounted: true,
+          }}
+          sx={{
+            display: { xs: 'block', sm: 'none' },
+            '& .MuiDrawer-paper': {
+              boxSizing: 'border-box',
+              width: drawerWidth,
+            },
+          }}
+        >
+          {drawer}
+        </Drawer>
+        <Drawer
+          variant="permanent"
+          sx={{
+            display: { xs: 'none', sm: 'block' },
+            '& .MuiDrawer-paper': {
+              boxSizing: 'border-box',
+              width: drawerWidth,
+            },
+          }}
+          open
+        >
+          {drawer}
+        </Drawer>
+      </Box>
+
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          p: 3,
+          width: { sm: `calc(100% - ${drawerWidth}px)` },
+          bgcolor: '#F8FAFC',
+          minHeight: '100vh',
+        }}
+      >
+        <Toolbar />
+        <Outlet />
+      </Box>
+    </Box>
   );
 };
 

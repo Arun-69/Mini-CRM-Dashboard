@@ -1,52 +1,68 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Card,
+  Box,
+  Paper,
   Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TablePagination,
   Button,
-  Input,
+  TextField,
+  Chip,
+  IconButton,
+  Menu,
+  MenuItem,
   Select,
-  Tag,
-  Space,
-  Modal,
-  Form,
-  message,
-  Spin,
+  FormControl,
+  InputLabel,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Grid,
   Typography,
-  Row,
-  Col,
-  DatePicker,
-  Dropdown,
-} from 'antd';
+  CircularProgress,
+  Alert,
+} from '@mui/material';
 import {
-  PlusOutlined,
-  SearchOutlined,
-  MoreOutlined,
-  CheckCircleOutlined,
-} from '@ant-design/icons';
+  Add as AddIcon,
+  Search as SearchIcon,
+  MoreVert as MoreVertIcon,
+} from '@mui/icons-material';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { useSnackbar } from 'notistack';
 import dayjs from 'dayjs';
 import api from '../api/axios';
 
-const { Title, Text } = Typography;
-const { Option } = Select;
-const { TextArea } = Input;
-
 const Tasks = () => {
   const queryClient = useQueryClient();
+  const { enqueueSnackbar } = useSnackbar();
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [form] = Form.useForm();
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [newTask, setNewTask] = useState({
+    title: '',
+    lead: '',
+    assignedTo: '',
+    dueDate: null,
+  });
+  const [error, setError] = useState('');
 
   const { data, isLoading } = useQuery({
-    queryKey: ['tasks', currentPage, pageSize, search, statusFilter],
+    queryKey: ['tasks', page, rowsPerPage, search, statusFilter],
     queryFn: async () => {
       const response = await api.get('/tasks', {
         params: {
-          page: currentPage,
-          limit: pageSize,
+          page: page + 1,
+          limit: rowsPerPage,
           search: search || undefined,
           status: statusFilter || undefined,
         },
@@ -72,16 +88,21 @@ const Tasks = () => {
   });
 
   const createMutation = useMutation({
-    mutationFn: (values) => api.post('/tasks', values),
+    mutationFn: (task) => api.post('/tasks', task),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
-      message.success('Task created successfully');
-      setModalVisible(false);
-      form.resetFields();
+      enqueueSnackbar('Task created successfully', { variant: 'success' });
+      setDialogOpen(false);
+      setNewTask({
+        title: '',
+        lead: '',
+        assignedTo: '',
+        dueDate: null,
+      });
     },
     onError: (error) => {
-      message.error(error.response?.data?.message || 'Failed to create task');
+      setError(error.response?.data?.message || 'Failed to create task');
     },
   });
 
@@ -90,273 +111,260 @@ const Tasks = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
-      message.success('Task status updated');
+      enqueueSnackbar('Task status updated', { variant: 'success' });
+      handleMenuClose();
     },
     onError: () => {
-      message.error('Failed to update task status');
+      enqueueSnackbar('Only assigned users can update task status.', { variant: 'error' });
     },
   });
 
-  const getStatusTag = (status) => {
-    const colorMap = {
-      pending: 'orange',
-      'in-progress': 'blue',
-      completed: 'green',
-      cancelled: 'red',
-    };
-    return <Tag color={colorMap[status] || 'default'}>{status.toUpperCase()}</Tag>;
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
   };
 
-  const getPriorityTag = (priority) => {
-    const colorMap = {
-      low: 'blue',
-      medium: 'orange',
-      high: 'red',
-    };
-    return <Tag color={colorMap[priority] || 'default'}>{priority.toUpperCase()}</Tag>;
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
   };
 
-  const columns = [
-    {
-      title: 'Title',
-      dataIndex: 'title',
-      key: 'title',
-      render: (text) => <Text strong>{text}</Text>,
-    },
-    {
-      title: 'Lead',
-      dataIndex: ['lead', 'name'],
-      key: 'lead',
-      render: (text) => text || 'N/A',
-    },
-    {
-      title: 'Assigned To',
-      dataIndex: ['assignedTo', 'name'],
-      key: 'assignedTo',
-      render: (text) => text || 'Unassigned',
-    },
-    {
-      title: 'Priority',
-      dataIndex: 'priority',
-      key: 'priority',
-      render: (priority) => getPriorityTag(priority),
-    },
-    {
-      title: 'Status',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status) => getStatusTag(status),
-    },
-    {
-      title: 'Due Date',
-      dataIndex: 'dueDate',
-      key: 'dueDate',
-      render: (date) => date ? dayjs(date).format('YYYY-MM-DD') : 'N/A',
-    },
-    {
-      title: 'Actions',
-      key: 'actions',
-      width: 120,
-      render: (_, record) => {
-        const statusMenu = {
-          items: [
-            { key: 'in-progress', label: 'Mark as In Progress' },
-            { key: 'completed', label: 'Mark as Completed' },
-            { key: 'cancelled', label: 'Mark as Cancelled' },
-          ],
-          onClick: ({ key }) => {
-            if (record.assignedTo?._id) {
-              updateStatusMutation.mutate({ id: record._id, status: key });
-            } else {
-              message.warning('Only assigned users can update task status');
-            }
-          },
-        };
+  const handleSearch = (event) => {
+    setSearch(event.target.value);
+    setPage(0);
+  };
 
-        return (
-          <Dropdown menu={statusMenu} placement="bottomRight">
-            <Button type="text" icon={<MoreOutlined />} size="small" />
-          </Dropdown>
-        );
-      },
-    },
-  ];
+  const handleMenuClick = (event, task) => {
+    setAnchorEl(event.currentTarget);
+    setSelectedTask(task);
+  };
 
-  const onFinish = (values) => {
-    createMutation.mutate(values);
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedTask(null);
+  };
+
+  const handleStatusChange = (status) => {
+    if (selectedTask) {
+      updateStatusMutation.mutate({ id: selectedTask._id, status });
+    }
+  };
+
+  const handleDialogClose = () => {
+    setDialogOpen(false);
+    setNewTask({
+      title: '',
+      lead: '',
+      assignedTo: '',
+      dueDate: null,
+    });
+    setError('');
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    createMutation.mutate(newTask);
+  };
+
+  const getStatusColor = (status) => {
+    const colors = {
+      pending: 'warning',
+      'in-progress': 'info',
+      completed: 'success',
+      cancelled: 'error',
+    };
+    return colors[status] || 'default';
   };
 
   if (isLoading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', padding: 50 }}>
-        <Spin size="large" />
-      </div>
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
+        <CircularProgress />
+      </Box>
     );
   }
 
+  // Check if current user is assigned to the task
+  const isAssignedUser = (task) => {
+    return task.assignedTo?._id === task.assignedBy?._id;
+  };
+
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <Title level={3} style={{ margin: 0 }}>Tasks</Title>
+    <Box>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+        <Typography variant="h4" fontWeight={600}>
+          Tasks
+        </Typography>
         <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={() => setModalVisible(true)}
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => setDialogOpen(true)}
         >
           Add Task
         </Button>
-      </div>
+      </Box>
 
-      <Card>
-        <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-          <Col xs={24} sm={12} md={8}>
-            <Input
+      <Paper sx={{ p: 2, mb: 2, borderRadius: 3 }}>
+        <Grid container spacing={2}>
+          <Grid item xs={12} md={6}>
+            <TextField
+              fullWidth
+              size="small"
               placeholder="Search tasks..."
-              prefix={<SearchOutlined />}
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              allowClear
+              onChange={handleSearch}
+              InputProps={{
+                startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />,
+              }}
             />
-          </Col>
-          <Col xs={24} sm={12} md={6}>
-            <Select
-              placeholder="Filter by status"
-              style={{ width: '100%' }}
-              value={statusFilter}
-              onChange={setStatusFilter}
-              allowClear
-            >
-              <Option value="pending">Pending</Option>
-              <Option value="in-progress">In Progress</Option>
-              <Option value="completed">Completed</Option>
-              <Option value="cancelled">Cancelled</Option>
-            </Select>
-          </Col>
-        </Row>
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Status</InputLabel>
+              <Select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                label="Status"
+              >
+                <MenuItem value="">All</MenuItem>
+                <MenuItem value="pending">Pending</MenuItem>
+                <MenuItem value="in-progress">In Progress</MenuItem>
+                <MenuItem value="completed">Completed</MenuItem>
+                <MenuItem value="cancelled">Cancelled</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+        </Grid>
+      </Paper>
 
-        <Table
-          columns={columns}
-          dataSource={data?.tasks}
-          rowKey="_id"
-          pagination={{
-            current: currentPage,
-            pageSize: pageSize,
-            total: data?.pagination?.total || 0,
-            showSizeChanger: true,
-            showTotal: (total) => `Total ${total} tasks`,
-            onChange: (page, size) => {
-              setCurrentPage(page);
-              if (size) setPageSize(size);
-            },
-          }}
+      <TableContainer component={Paper} sx={{ borderRadius: 3 }}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Title</TableCell>
+              <TableCell>Lead</TableCell>
+              <TableCell>Due Date</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell align="right">Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {data?.tasks?.map((task) => (
+              <TableRow key={task._id}>
+                <TableCell>{task.title}</TableCell>
+                <TableCell>{task.lead?.name || 'N/A'}</TableCell>
+                <TableCell>
+                  {task.dueDate ? dayjs(task.dueDate).format('YYYY-MM-DD') : 'N/A'}
+                </TableCell>
+                <TableCell>
+                  <Chip
+                    label={task.status}
+                    color={getStatusColor(task.status)}
+                    size="small"
+                  />
+                </TableCell>
+                <TableCell align="right">
+                  <IconButton
+                    size="small"
+                    onClick={(e) => handleMenuClick(e, task)}
+                    title="Update Status"
+                  >
+                    <MoreVertIcon />
+                  </IconButton>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        <TablePagination
+          rowsPerPageOptions={[5, 10, 25]}
+          component="div"
+          count={data?.pagination?.total || 0}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          onPageChange={handleChangePage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
         />
-      </Card>
+      </TableContainer>
 
-      <Modal
-        title="Add New Task"
-        open={modalVisible}
-        onCancel={() => {
-          setModalVisible(false);
-          form.resetFields();
-        }}
-        footer={null}
-        width={600}
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleMenuClose}
       >
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={onFinish}
-          size="large"
-          style={{ marginTop: 16 }}
-        >
-          <Form.Item
-            name="title"
-            label="Task Title"
-            rules={[{ required: true, message: 'Please enter task title' }]}
-          >
-            <Input placeholder="Enter task title" />
-          </Form.Item>
+        <MenuItem onClick={() => handleStatusChange('in-progress')}>
+          Mark as In Progress
+        </MenuItem>
+        <MenuItem onClick={() => handleStatusChange('completed')}>
+          Mark as Completed
+        </MenuItem>
+        <MenuItem onClick={() => handleStatusChange('cancelled')}>
+          Mark as Cancelled
+        </MenuItem>
+      </Menu>
 
-          <Form.Item
-            name="description"
-            label="Description"
-          >
-            <TextArea rows={3} placeholder="Enter task description" />
-          </Form.Item>
-
-          <Form.Item
-            name="lead"
-            label="Lead"
-            rules={[{ required: true, message: 'Please select a lead' }]}
-          >
-            <Select placeholder="Select lead">
-              {leadsData?.map((lead) => (
-                <Option key={lead._id} value={lead._id}>
-                  {lead.name} ({lead.email})
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-
-          <Form.Item
-            name="assignedTo"
-            label="Assign To"
-            rules={[{ required: true, message: 'Please select a user' }]}
-          >
-            <Select placeholder="Select user">
-              {usersData?.map((user) => (
-                <Option key={user._id} value={user._id}>
-                  {user.name} ({user.email})
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                name="priority"
-                label="Priority"
-                initialValue="medium"
+      <Dialog open={dialogOpen} onClose={handleDialogClose} maxWidth="sm" fullWidth>
+        <DialogTitle>Add New Task</DialogTitle>
+        <form onSubmit={handleSubmit}>
+          <DialogContent>
+            {error && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {error}
+              </Alert>
+            )}
+            <TextField
+              fullWidth
+              required
+              label="Title"
+              value={newTask.title}
+              onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+              sx={{ mb: 2 }}
+            />
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel>Lead</InputLabel>
+              <Select
+                value={newTask.lead}
+                onChange={(e) => setNewTask({ ...newTask, lead: e.target.value })}
+                label="Lead"
+                required
               >
-                <Select>
-                  <Option value="low">Low</Option>
-                  <Option value="medium">Medium</Option>
-                  <Option value="high">High</Option>
-                </Select>
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="dueDate"
-                label="Due Date"
+                {leadsData?.map((lead) => (
+                  <MenuItem key={lead._id} value={lead._id}>
+                    {lead.name} ({lead.email})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel>Assign To</InputLabel>
+              <Select
+                value={newTask.assignedTo}
+                onChange={(e) => setNewTask({ ...newTask, assignedTo: e.target.value })}
+                label="Assign To"
+                required
               >
-                <DatePicker style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Form.Item>
-            <Space>
-              <Button
-                type="primary"
-                htmlType="submit"
-                loading={createMutation.isPending}
-                icon={<CheckCircleOutlined />}
-              >
-                Create Task
-              </Button>
-              <Button onClick={() => {
-                setModalVisible(false);
-                form.resetFields();
-              }}>
-                Cancel
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
-    </div>
+                {usersData?.map((user) => (
+                  <MenuItem key={user._id} value={user._id}>
+                    {user.name} ({user.email})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <DatePicker
+              label="Due Date"
+              value={newTask.dueDate}
+              onChange={(newValue) => setNewTask({ ...newTask, dueDate: newValue })}
+              sx={{ width: '100%' }}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleDialogClose}>Cancel</Button>
+            <Button type="submit" variant="contained" disabled={createMutation.isPending}>
+              {createMutation.isPending ? 'Creating...' : 'Create'}
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
+    </Box>
   );
 };
 

@@ -2,22 +2,23 @@ import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
-  Card,
-  Descriptions,
-  Table,
-  Tag,
-  Button,
-  Spin,
+  Box,
+  Paper,
   Typography,
-  Space,
-  Row,
-  Col,
+  Grid,
+  Card,
+  CardContent,
+  List,
+  ListItem,
+  ListItemText,
+  Chip,
+  Button,
+  Divider,
+  CircularProgress,
   Alert,
-} from 'antd';
-import { ArrowLeftOutlined, BuildOutlined } from '@ant-design/icons';
+} from '@mui/material';
+import { ArrowBack as ArrowBackIcon, Business as BusinessIcon, LocationOn as LocationIcon } from '@mui/icons-material';
 import api from '../api/axios';
-
-const { Title, Text } = Typography;
 
 const CompanyDetail = () => {
   const { id } = useParams();
@@ -33,140 +34,131 @@ const CompanyDetail = () => {
 
   if (isLoading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', padding: 50 }}>
-        <Spin size="large" />
-      </div>
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
+        <CircularProgress />
+      </Box>
     );
   }
 
   if (error) {
-    return <Alert message="Error loading company" type="error" />;
+    return <Alert severity="error">Error loading company details</Alert>;
   }
 
   if (!data) {
-    return <Alert message="Company not found" type="warning" />;
+    return <Alert severity="warning">Company not found</Alert>;
   }
 
   const { company, leads } = data;
 
-  const leadColumns = [
-    {
-      title: 'Name',
-      dataIndex: 'name',
-      key: 'name',
-    },
-    {
-      title: 'Email',
-      dataIndex: 'email',
-      key: 'email',
-    },
-    {
-      title: 'Phone',
-      dataIndex: 'phone',
-      key: 'phone',
-    },
-    {
-      title: 'Status',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status) => {
-        const colorMap = {
-          new: 'blue',
-          contacted: 'orange',
-          qualified: 'green',
-          lost: 'red',
-          converted: 'green',
-        };
-        return <Tag color={colorMap[status] || 'default'}>{status.toUpperCase()}</Tag>;
-      },
-    },
-    {
-      title: 'Assigned To',
-      dataIndex: ['assignedTo', 'name'],
-      key: 'assignedTo',
-      render: (text) => text || 'Unassigned',
-    },
-  ];
+  const getStatusColor = (status) => {
+    const colors = {
+      new: 'info',
+      contacted: 'warning',
+      qualified: 'success',
+      lost: 'error',
+      converted: 'success',
+    };
+    return colors[status] || 'default';
+  };
+
+  // Get full address
+  const getFullAddress = () => {
+    if (!company.address) return 'N/A';
+    const parts = [
+      company.address.street,
+      company.address.city,
+      company.address.state,
+      company.address.country,
+      company.address.zipCode
+    ].filter(Boolean);
+    return parts.join(', ') || 'N/A';
+  };
 
   return (
-    <div>
+    <Box>
       <Button
-        icon={<ArrowLeftOutlined />}
+        startIcon={<ArrowBackIcon />}
         onClick={() => navigate('/companies')}
-        style={{ marginBottom: 16 }}
+        sx={{ mb: 2 }}
       >
         Back to Companies
       </Button>
 
-      <Row gutter={[24, 24]}>
-        <Col xs={24} lg={12}>
-          <Card>
-            <Space size="middle" style={{ marginBottom: 16 }}>
-              <BuildOutlined style={{ fontSize: 32, color: '#1890ff' }} />
-              <Title level={3} style={{ margin: 0 }}>
-                {company.name}
-              </Title>
-            </Space>
+      <Typography variant="h4" gutterBottom fontWeight={600}>
+        Company Details
+      </Typography>
 
-            <Descriptions column={1} bordered size="middle">
-              <Descriptions.Item label="Company Name">
+      <Grid container spacing={3}>
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 3, borderRadius: 3 }}>
+            <Box display="flex" alignItems="center" gap={2} mb={3}>
+              <BusinessIcon sx={{ fontSize: 40, color: 'primary.main' }} />
+              <Typography variant="h5" fontWeight={600}>
                 {company.name}
-              </Descriptions.Item>
-              <Descriptions.Item label="Industry">
-                {company.industry || 'N/A'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Email">
-                {company.email || 'N/A'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Phone">
-                {company.phone || 'N/A'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Website">
-                {company.website || 'N/A'}
-              </Descriptions.Item>
-              {company.address && (
-                <Descriptions.Item label="Address">
-                  {[
-                    company.address.street,
-                    company.address.city,
-                    company.address.state,
-                    company.address.zipCode,
-                    company.address.country,
-                  ]
-                    .filter(Boolean)
-                    .join(', ')}
-                </Descriptions.Item>
-              )}
-            </Descriptions>
-          </Card>
-        </Col>
+              </Typography>
+            </Box>
 
-        <Col xs={24} lg={12}>
-          <Card
-            title={
-              <Space>
-                <span>Associated Leads</span>
-                <Tag color="blue">{leads?.length || 0}</Tag>
-              </Space>
-            }
-          >
-            {leads && leads.length > 0 ? (
-              <Table
-                columns={leadColumns}
-                dataSource={leads}
-                rowKey="_id"
-                pagination={false}
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="body1" sx={{ mb: 1 }}>
+                <strong>Company Name:</strong> {company.name}
+              </Typography>
+              <Typography variant="body1" sx={{ mb: 1 }}>
+                <strong>Industry:</strong> {company.industry || 'N/A'}
+              </Typography>
+              <Typography variant="body1" sx={{ mb: 1 }}>
+                <strong>Location:</strong> 
+              </Typography>
+              <Typography variant="body2" color="textSecondary" sx={{ ml: 2 }}>
+                <LocationIcon sx={{ fontSize: 16, verticalAlign: 'middle', mr: 0.5 }} />
+                {getFullAddress()}
+              </Typography>
+            </Box>
+          </Paper>
+        </Grid>
+
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 3, borderRadius: 3 }}>
+            <Typography variant="h6" gutterBottom fontWeight={600}>
+              Associated Leads
+              <Chip
+                label={leads?.length || 0}
+                color="primary"
                 size="small"
+                sx={{ ml: 1 }}
               />
+            </Typography>
+            {leads && leads.length > 0 ? (
+              <List>
+                {leads.map((lead) => (
+                  <React.Fragment key={lead._id}>
+                    <ListItem>
+                      <ListItemText
+                        primary={lead.name}
+                        secondary={
+                          <>
+                            {lead.email} • {lead.phone}
+                          </>
+                        }
+                      />
+                      <Chip
+                        label={lead.status}
+                        color={getStatusColor(lead.status)}
+                        size="small"
+                      />
+                    </ListItem>
+                    <Divider />
+                  </React.Fragment>
+                ))}
+              </List>
             ) : (
-              <div style={{ textAlign: 'center', padding: 40 }}>
-                <Text type="secondary">No leads associated with this company</Text>
-              </div>
+              <Typography color="textSecondary" sx={{ py: 3, textAlign: 'center' }}>
+                No leads associated with this company
+              </Typography>
             )}
-          </Card>
-        </Col>
-      </Row>
-    </div>
+          </Paper>
+        </Grid>
+      </Grid>
+    </Box>
   );
 };
 

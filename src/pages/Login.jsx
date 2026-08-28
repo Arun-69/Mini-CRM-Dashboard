@@ -1,44 +1,68 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Card,
-  Form,
-  Input,
+  Box,
+  Paper,
+  TextField,
   Button,
-  Tabs,
   Typography,
   Alert,
-  Layout,
-} from 'antd';
+  Tabs,
+  Tab,
+  Container,
+  InputAdornment,
+  IconButton,
+  Avatar,
+  Divider,
+} from '@mui/material';
 import {
-  UserOutlined,
-  LockOutlined,
-  MailOutlined,
-} from '@ant-design/icons';
+  Email as EmailIcon,
+  Lock as LockIcon,
+  Person as PersonIcon,
+  Visibility,
+  VisibilityOff,
+} from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 
-const { Title, Text } = Typography;
-const { TabPane } = Tabs;
-const { Content } = Layout;
-
 const Login = () => {
-  const [loading, setLoading] = useState(false);
+  const [tab, setTab] = useState(0);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+  });
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { login, register } = useAuth();
 
-  const onFinish = async (values) => {
+  const handleTabChange = (event, newValue) => {
+    setTab(newValue);
     setError('');
-    setLoading(true);
+  };
 
-    const { name, email, password, activeTab } = values;
-    let result;
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+  };
 
-    if (activeTab === '1') {
-      result = await login(email, password);
-    } else {
-      result = await register(name, email, password);
-    }
+  const handleTogglePassword = () => {
+    setShowPassword(!showPassword);
+  };
+
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  setError('');
+  setLoading(true);
+
+  let result;
+
+  if (tab === 0) {
+    // Login
+    result = await login(formData.email, formData.password);
 
     setLoading(false);
 
@@ -47,172 +71,259 @@ const Login = () => {
     } else {
       setError(result.message);
     }
-  };
+  } else {
+    // Register
+    result = await register(
+      formData.name,
+      formData.email,
+      formData.password
+    );
+
+    setLoading(false);
+
+    if (result.success) {
+      setTab(0);
+
+      setFormData({
+        name: '',
+        email: formData.email,
+        password: '',
+      });
+    } else {
+      setError(result.message);
+    }
+  }
+};
+
 
   return (
-    <Layout style={{ minHeight: '100vh', background: '#f0f2f5' }}>
-      <Content style={{
+    <Box
+      sx={{
+        minHeight: '100vh',
         display: 'flex',
-        justifyContent: 'center',
         alignItems: 'center',
-        padding: '20px',
-      }}>
-        <Card style={{ maxWidth: 420, width: '100%' }}>
-          <div style={{ textAlign: 'center', marginBottom: 24 }}>
-            <div style={{
-              width: 64,
-              height: 64,
-              borderRadius: '50%',
-              background: '#1890ff',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: 16,
-            }}>
-              <Text style={{ color: 'white', fontSize: 28, fontWeight: 700 }}>C</Text>
-            </div>
-            <Title level={2} style={{ margin: 0 }}>Mini CRM</Title>
-            <Text type="secondary">Manage your leads, companies & tasks</Text>
-          </div>
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        p: 2,
+      }}
+    >
+      <Container component="main" maxWidth="xs">
+  <Paper
+    elevation={12}
+    sx={{
+      p: { xs: 2.5, sm: 3 },
+      borderRadius: 3,
+      width: '100%',
+      maxWidth: 400,
+      mx: 'auto',
+      bgcolor: 'rgba(255,255,255,0.97)',
+    }}
+  >
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+      }}
+    >
+      <Avatar
+        sx={{
+          width: 52,
+          height: 52,
+          bgcolor: 'primary.main',
+          mb: 1.5,
+        }}
+      >
+        <Typography
+          variant="h5"
+          sx={{
+            color: 'white',
+            fontWeight: 700,
+          }}
+        >
+          C
+        </Typography>
+      </Avatar>
 
-          {error && (
-            <Alert
-              message={error}
-              type="error"
-              showIcon
-              style={{ marginBottom: 20 }}
-              closable
-              onClose={() => setError('')}
-            />
-          )}
+      <Typography
+        variant="h5"
+        sx={{
+          fontWeight: 700,
+          background:
+            'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          mb: 0.5,
+        }}
+      >
+        Mini CRM
+      </Typography>
 
-          <Tabs defaultActiveKey="1" centered>
-            <TabPane tab="Sign In" key="1">
-              <Form
-                name="login"
-                onFinish={onFinish}
-                layout="vertical"
-                size="large"
-              >
-                <Form.Item
-                  name="activeTab"
-                  initialValue="1"
-                  hidden
+      <Typography
+        variant="body2"
+        color="text.secondary"
+        sx={{ mb: 2 }}
+      >
+        {tab === 0
+          ? 'Sign in to your account'
+          : 'Create a new account'}
+      </Typography>
+
+      <Tabs
+        value={tab}
+        onChange={handleTabChange}
+        sx={{
+          mb: 2,
+          minHeight: 40,
+          '& .MuiTabs-indicator': {
+            bgcolor: '#667eea',
+          },
+          '& .MuiTab-root': {
+            minHeight: 40,
+            fontWeight: 500,
+            '&.Mui-selected': {
+              color: '#667eea',
+            },
+          },
+        }}
+      >
+        <Tab label="Sign In" />
+        <Tab label="Sign Up" />
+      </Tabs>
+
+      {error && (
+        <Alert
+          severity="error"
+          sx={{
+            mb: 1.5,
+            width: '100%',
+          }}
+        >
+          {error}
+        </Alert>
+      )}
+
+      <form onSubmit={handleSubmit} style={{ width: '100%' }}>
+        {tab === 1 && (
+          <TextField
+            margin="dense"
+            required
+            fullWidth
+            id="name"
+            label="Full Name"
+            name="name"
+            autoComplete="name"
+            value={formData.name}
+            onChange={handleChange}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <PersonIcon sx={{ color: '#64748B' }} />
+                </InputAdornment>
+              ),
+            }}
+            sx={{ mb: 1.5 }}
+          />
+        )}
+
+        <TextField
+          margin="dense"
+          required
+          fullWidth
+          id="email"
+          label="Email Address"
+          name="email"
+          type="email"
+          autoComplete="email"
+          value={formData.email}
+          onChange={handleChange}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <EmailIcon sx={{ color: '#64748B' }} />
+              </InputAdornment>
+            ),
+          }}
+          sx={{ mb: 1.5 }}
+        />
+
+        <TextField
+          margin="dense"
+          required
+          fullWidth
+          name="password"
+          label="Password"
+          type={showPassword ? 'text' : 'password'}
+          id="password"
+          autoComplete={
+            tab === 0 ? 'current-password' : 'new-password'
+          }
+          value={formData.password}
+          onChange={handleChange}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <LockIcon sx={{ color: '#64748B' }} />
+              </InputAdornment>
+            ),
+            endAdornment: (
+              <InputAdornment position="end">
+                <IconButton
+                  onClick={handleTogglePassword}
+                  edge="end"
                 >
-                  <Input />
-                </Form.Item>
+                  {showPassword ? (
+                    <VisibilityOff />
+                  ) : (
+                    <Visibility />
+                  )}
+                </IconButton>
+              </InputAdornment>
+            ),
+          }}
+          sx={{ mb: 2 }}
+        />
 
-                <Form.Item
-                  name="email"
-                  rules={[
-                    { required: true, message: 'Please input your email!' },
-                    { type: 'email', message: 'Please enter a valid email!' },
-                  ]}
-                >
-                  <Input 
-                    prefix={<MailOutlined />} 
-                    placeholder="Email Address" 
-                  />
-                </Form.Item>
+        <Button
+          type="submit"
+          fullWidth
+          variant="contained"
+          disabled={loading}
+          sx={{
+            height: 44,
+            borderRadius: 2,
+            fontWeight: 600,
+            background:
+              'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            '&:hover': {
+              background:
+                'linear-gradient(135deg, #5a67d8 0%, #6b46a1 100%)',
+            },
+          }}
+        >
+          {loading
+            ? 'Loading...'
+            : tab === 0
+            ? 'Sign In'
+            : 'Create Account'}
+        </Button>
+      </form>
 
-                <Form.Item
-                  name="password"
-                  rules={[{ required: true, message: 'Please input your password!' }]}
-                >
-                  <Input.Password 
-                    prefix={<LockOutlined />} 
-                    placeholder="Password" 
-                  />
-                </Form.Item>
+      <Divider sx={{ my: 2, width: '100%' }} />
 
-                <Form.Item>
-                  <Button
-                    type="primary"
-                    htmlType="submit"
-                    loading={loading}
-                    block
-                    size="large"
-                  >
-                    Sign In
-                  </Button>
-                </Form.Item>
-              </Form>
-            </TabPane>
-
-            <TabPane tab="Sign Up" key="2">
-              <Form
-                name="register"
-                onFinish={onFinish}
-                layout="vertical"
-                size="large"
-              >
-                <Form.Item
-                  name="activeTab"
-                  initialValue="2"
-                  hidden
-                >
-                  <Input />
-                </Form.Item>
-
-                <Form.Item
-                  name="name"
-                  rules={[{ required: true, message: 'Please input your name!' }]}
-                >
-                  <Input 
-                    prefix={<UserOutlined />} 
-                    placeholder="Full Name" 
-                  />
-                </Form.Item>
-
-                <Form.Item
-                  name="email"
-                  rules={[
-                    { required: true, message: 'Please input your email!' },
-                    { type: 'email', message: 'Please enter a valid email!' },
-                  ]}
-                >
-                  <Input 
-                    prefix={<MailOutlined />} 
-                    placeholder="Email Address" 
-                  />
-                </Form.Item>
-
-                <Form.Item
-                  name="password"
-                  rules={[
-                    { required: true, message: 'Please input your password!' },
-                    { min: 6, message: 'Password must be at least 6 characters!' },
-                  ]}
-                >
-                  <Input.Password 
-                    prefix={<LockOutlined />} 
-                    placeholder="Password" 
-                  />
-                </Form.Item>
-
-                <Form.Item>
-                  <Button
-                    type="primary"
-                    htmlType="submit"
-                    loading={loading}
-                    block
-                    size="large"
-                  >
-                    Create Account
-                  </Button>
-                </Form.Item>
-              </Form>
-            </TabPane>
-          </Tabs>
-
-          <div style={{ textAlign: 'center', marginTop: 16 }}>
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              © 2024 Mini CRM. All rights reserved.
-            </Text>
-          </div>
-        </Card>
-      </Content>
-    </Layout>
+      <Typography
+        variant="caption"
+        color="text.secondary"
+        align="center"
+      >
+        {tab === 0
+          ? "Don't have an account? Sign up above"
+          : 'Already have an account? Sign in above'}
+      </Typography>
+    </Box>
+  </Paper>
+</Container>
+    </Box>
   );
 };
 
